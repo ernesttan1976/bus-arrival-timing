@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { MapPin, Navigation } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { useLTAData } from '@/hooks/useLTAData';
 import { showError, showSuccess } from '@/utils/toast';
 
@@ -57,10 +58,11 @@ const popularBusStops: BusStopInfo[] = [
 ];
 
 const NearbyStops = ({ onSelectStop }: NearbyStopsProps) => {
-  const [nearbyStops, setNearbyStops] = useState<BusStopInfo[]>([]);
+  const [allNearbyStops, setAllNearbyStops] = useState<BusStopInfo[]>([]);
   const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
   const [loadingLocation, setLoadingLocation] = useState(false);
-  const { loading } = useLTAData();
+  const [selectedDistance, setSelectedDistance] = useState<number>(0.5); // Default 500m
+  const { loading, searchBusStops } = useLTAData();
 
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
     const R = 6371; // Radius of the Earth in km
@@ -90,30 +92,47 @@ const NearbyStops = ({ onSelectStop }: NearbyStopsProps) => {
 
         console.log(`User location: ${latitude}, ${longitude}`);
 
-        // Calculate distances to popular stops and filter nearby ones (within 5km)
-        const stopsWithDistance = popularBusStops.map(stop => {
-          const distance = calculateDistance(latitude, longitude, stop.latitude, stop.longitude);
-          console.log(`Distance to ${stop.stopName}: ${distance.toFixed(2)}km`);
-          return {
-            ...stop,
-            distance
-          };
-        }).filter(stop => stop.distance! <= 5); // Increased to 5km
+        try {
+          // First, try to get ALL bus stops from LTA API (without search query)
+          const allStops = await searchBusStops('');
+          console.log(`Retrieved ${allStops.length} total stops from LTA API`);
 
-        console.log(`Found ${stopsWithDistance.length} stops within 5km`);
+          let stopsToCheck = allStops;
+          
+          // If LTA API doesn't return stops, fall back to popular stops
+          if (allStops.length === 0) {
+            console.log('No stops from LTA API, using popular stops as fallback');
+            stopsToCheck = popularBusStops;
+          }
 
-        // Sort by distance and take top 10
-        const sortedStops = stopsWithDistance
-          .sort((a, b) => a.distance! - b.distance!)
-          .slice(0, 10);
+          // Calculate distances to all stops
+          const stopsWithDistance = stopsToCheck.map(stop => {
+            const distance = calculateDistance(latitude, longitude, stop.latitude, stop.longitude);
+            return {
+              ...stop,
+              distance
+            };
+          });
 
-        setNearbyStops(sortedStops);
-        setLoadingLocation(false);
-        
-        if (sortedStops.length > 0) {
-          showSuccess(`Found ${sortedStops.length} nearby popular bus stops`);
-        } else {
-          showError('No popular bus stops found within 5km. You might be outside Singapore or in a remote area.');
+          // Filter within 2km and sort by distance
+          const nearbyStops = stopsWithDistance
+            .filter(stop => stop.distance! <= 2) // Within 2km
+            .sort((a, b) => a.distance! - b.distance!);
+
+          console.log(`Found ${nearbyStops.length} stops within 2km`);
+          
+          setAllNearbyStops(nearbyStops);
+          setLoadingLocation(false);
+          
+          if (nearbyStops.length > 0) {
+            showSuccess(`Found ${nearbyStops.length} bus stops within 2km`);
+          } else {
+            showError('No bus stops found within 2km. You might be outside Singapore.');
+          }
+        } catch (error) {
+          console.error('Error fetching nearby stops:', error);
+          setLoadingLocation(false);
+          showError('Failed to fetch nearby stops');
         }
       },
       (error) => {
@@ -136,10 +155,26 @@ const NearbyStops = ({ onSelectStop }: NearbyStopsProps) => {
       },
       {
         enableHighAccuracy: true,
-        timeout: 15000, // Increased timeout
-        maximumAge: 300000 // 5 minutes
+        timeout: 15000,
+        maximumAge: 300000
       }
     );
+  };
+
+  // Filter stops based on selected distance
+  const filteredStops = allNearbyStops.filter(stop => stop.distance! <= selectedDistance);
+
+  const getDistanceColor = (distance: number) => {
+    if (distance <= 0.5) return 'bg-green-100 text-green-800';
+    if (distance <= 1) return 'bg-yellow-100 text-yellow-800';
+    return 'bg-orange-100 text-orange-800';
+  };
+
+  const formatDistance = (distance: number) => {
+    if (distance < 1) {
+      return `${Math.round(distance * 1000)}m`;
+    }
+    return `${distance.toFixed(2)}km`;
   };
 
   return (
@@ -148,7 +183,7 @@ const NearbyStops = ({ onSelectStop }: NearbyStopsProps) => {
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg flex items-center gap-2">
             <Navigation className="w-5 h-5 text-blue-500" />
-            Nearby Popular Stops
+            Nearby Stops
           </CardTitle>
           <Button 
             onClick={findNearbyStops} 
@@ -160,35 +195,69 @@ const NearbyStops = ({ onSelectStop }: NearbyStopsProps) => {
           </Button>
         </div>
       </CardHeader>
-      {nearbyStops.length > 0 && (
+      
+      {allNearbyStops.length > 0 && (
         <CardContent>
-          <div className="space-y-2 max-h-48 overflow-y-auto">
-            {nearbyStops.map((stop) => (
-              <div 
-                key={stop.stopCode}
-                className="flex items-center justify-between p-2 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors"
-                onClick={() => onSelectStop(stop)}
-              >
-                <div>
-                  <p className="font-medium text-sm">{stop.stopName}</p>
-                  <p className="text-xs text-gray-500">{stop.stopCode} • {stop.roadName}</p>
-                </div>
-                <div className="flex items-center text-xs text-gray-500">
-                  <MapPin className="w-3 h-3 mr-1" />
-                  {stop.distance?.toFixed(2)}km
-                </div>
-              </div>
-            ))}
+          {/* Distance filter buttons */}
+          <div className="flex gap-2 mb-4">
+            <Button
+              size="sm"
+              variant={selectedDistance === 0.5 ? "default" : "outline"}
+              onClick={() => setSelectedDistance(0.5)}
+            >
+              Within 500m ({allNearbyStops.filter(s => s.distance! <= 0.5).length})
+            </Button>
+            <Button
+              size="sm"
+              variant={selectedDistance === 1 ? "default" : "outline"}
+              onClick={() => setSelectedDistance(1)}
+            >
+              Within 1km ({allNearbyStops.filter(s => s.distance! <= 1).length})
+            </Button>
+            <Button
+              size="sm"
+              variant={selectedDistance === 2 ? "default" : "outline"}
+              onClick={() => setSelectedDistance(2)}
+            >
+              Within 2km ({allNearbyStops.filter(s => s.distance! <= 2).length})
+            </Button>
           </div>
-          <p className="text-xs text-gray-500 mt-2 text-center">
-            Showing popular stops within 5km. Use search for more specific locations.
-          </p>
+
+          {/* Results */}
+          {filteredStops.length > 0 ? (
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {filteredStops.map((stop) => (
+                <div 
+                  key={stop.stopCode}
+                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors"
+                  onClick={() => onSelectStop(stop)}
+                >
+                  <div className="flex-1">
+                    <p className="font-medium text-sm">{stop.stopName}</p>
+                    <p className="text-xs text-gray-500">{stop.stopCode} • {stop.roadName}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge className={getDistanceColor(stop.distance!)}>
+                      {formatDistance(stop.distance!)}
+                    </Badge>
+                    <MapPin className="w-4 h-4 text-gray-400" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-4 text-gray-500">
+              <p className="text-sm">No stops found within {selectedDistance === 0.5 ? '500m' : selectedDistance === 1 ? '1km' : '2km'}</p>
+              <p className="text-xs mt-1">Try a larger distance or use the search function</p>
+            </div>
+          )}
         </CardContent>
       )}
-      {userLocation && nearbyStops.length === 0 && !loadingLocation && (
+      
+      {userLocation && allNearbyStops.length === 0 && !loadingLocation && (
         <CardContent>
           <div className="text-center py-4 text-gray-500">
-            <p className="text-sm">No popular stops found within 5km</p>
+            <p className="text-sm">No bus stops found within 2km</p>
             <p className="text-xs mt-1">Your location: {userLocation.lat.toFixed(4)}, {userLocation.lng.toFixed(4)}</p>
             <p className="text-xs">Try using the search function instead</p>
           </div>
