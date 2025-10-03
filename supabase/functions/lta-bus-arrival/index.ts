@@ -35,10 +35,11 @@ serve(async (req) => {
       )
     }
 
-    // LTA DataMall Bus Arrival API endpoint
-    const ltaUrl = `https://datamall2.mytransport.sg/ltaodataservice/BusArrivalv2?BusStopCode=${busStopCode}`
+    // Correct LTA DataMall Bus Arrival API endpoint - note the capital 'V' in BusArrivalV2
+    const ltaUrl = `https://datamall2.mytransport.sg/ltaodataservice/BusArrivalV2?BusStopCode=${busStopCode}`
     
     console.log(`Fetching bus arrival for stop ${busStopCode} from: ${ltaUrl}`)
+    console.log(`Using API key: ${ltaApiKey.substring(0, 8)}...`)
 
     const response = await fetch(ltaUrl, {
       headers: {
@@ -65,11 +66,11 @@ serve(async (req) => {
     }
 
     const data = await response.json()
-    console.log(`Raw LTA response:`, JSON.stringify(data, null, 2))
+    console.log(`Raw LTA response for stop ${busStopCode}:`, JSON.stringify(data, null, 2))
     
     // Helper function to calculate arrival time in minutes
     const calculateArrivalTime = (estimatedArrival: string | null): number | null => {
-      if (!estimatedArrival) return null;
+      if (!estimatedArrival || estimatedArrival === '') return null;
       
       try {
         const arrivalTime = new Date(estimatedArrival);
@@ -110,8 +111,8 @@ serve(async (req) => {
       }))
     }
 
-    console.log(`Transformed data:`, JSON.stringify(transformedData, null, 2))
-    console.log(`Returning ${transformedData.services.length} bus services`)
+    console.log(`Transformed data for stop ${busStopCode}:`, JSON.stringify(transformedData, null, 2))
+    console.log(`Returning ${transformedData.services.length} bus services for stop ${busStopCode}`)
 
     return new Response(
       JSON.stringify(transformedData),

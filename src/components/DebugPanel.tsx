@@ -43,10 +43,10 @@ const DebugPanel = () => {
         results.ltaBusStops = 'No data returned';
       }
 
-      // Test LTA bus arrival API with a known stop code
+      // Test LTA bus arrival API with a busy bus stop (Raffles Place)
       console.log('Testing LTA bus arrival API...');
       const { data: arrivalData, error: arrivalError } = await supabase.functions.invoke('lta-bus-arrival', {
-        body: { busStopCode: '01012' } // Orchard Road stop
+        body: { busStopCode: '03111' } // Raffles Place MRT - usually has many buses
       });
       
       if (arrivalError) {
@@ -176,6 +176,16 @@ const DebugPanel = () => {
                 <li>• Invalid or expired LTA API key</li>
                 <li>• LTA DataMall terms not accepted</li>
                 <li>• Rate limiting (too many requests)</li>
+                <li>• Case-sensitive API endpoint names</li>
+              </ul>
+            </div>
+
+            <div className="bg-green-50 p-3 rounded-lg">
+              <p className="text-sm font-medium text-green-800 mb-1">API Endpoint Info:</p>
+              <ul className="text-xs text-green-700 space-y-1">
+                <li>• Bus Stops: BusStops (working ✅)</li>
+                <li>• Bus Arrival: BusArrivalV2 (note: capital 'V')</li>
+                <li>• Testing with stop 03111 (Raffles Place MRT)</li>
               </ul>
             </div>
           </div>
