@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bug, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
+import { Bug, ChevronDown, ChevronUp, ExternalLink, TestTube } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -8,7 +8,9 @@ import { supabase } from '@/integrations/supabase/client';
 const DebugPanel = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [testResults, setTestResults] = useState<any>(null);
+  const [endpointResults, setEndpointResults] = useState<any>(null);
   const [testing, setTesting] = useState(false);
+  const [testingEndpoints, setTestingEndpoints] = useState(false);
 
   const testConnections = async () => {
     setTesting(true);
@@ -43,10 +45,10 @@ const DebugPanel = () => {
         results.ltaBusStops = 'No data returned';
       }
 
-      // Test LTA bus arrival API with a busy bus stop (Raffles Place)
+      // Test LTA bus arrival API
       console.log('Testing LTA bus arrival API...');
       const { data: arrivalData, error: arrivalError } = await supabase.functions.invoke('lta-bus-arrival', {
-        body: { busStopCode: '03111' } // Raffles Place MRT - usually has many buses
+        body: { busStopCode: '03111' }
       });
       
       if (arrivalError) {
@@ -71,6 +73,22 @@ const DebugPanel = () => {
 
     setTestResults(results);
     setTesting(false);
+  };
+
+  const testEndpoints = async () => {
+    setTestingEndpoints(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('lta-test-endpoints');
+      
+      if (error) {
+        setEndpointResults({ error: error.message });
+      } else {
+        setEndpointResults(data);
+      }
+    } catch (error: any) {
+      setEndpointResults({ error: error.message });
+    }
+    setTestingEndpoints(false);
   };
 
   const getStatusColor = (status: string) => {
@@ -100,17 +118,28 @@ const DebugPanel = () => {
       {isOpen && (
         <CardContent>
           <div className="space-y-4">
-            <Button 
-              onClick={testConnections} 
-              disabled={testing}
-              className="w-full"
-            >
-              {testing ? 'Testing Connections...' : 'Test API Connections'}
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                onClick={testConnections} 
+                disabled={testing}
+                className="flex-1"
+              >
+                {testing ? 'Testing...' : 'Test API Connections'}
+              </Button>
+              <Button 
+                onClick={testEndpoints} 
+                disabled={testingEndpoints}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <TestTube className="w-4 h-4" />
+                {testingEndpoints ? 'Testing...' : 'Test Endpoints'}
+              </Button>
+            </div>
 
             {testResults && (
               <div className="space-y-2">
-                <p className="text-sm font-medium">Test Results:</p>
+                <p className="text-sm font-medium">Connection Test Results:</p>
                 <div className="space-y-1">
                   <div className="flex justify-between items-center">
                     <span className="text-sm">Supabase Connection:</span>
@@ -140,10 +169,38 @@ const DebugPanel = () => {
                     </pre>
                   </div>
                 )}
-                
-                <p className="text-xs text-gray-500">
-                  Last tested: {new Date(testResults.timestamp).toLocaleString()}
-                </p>
+              </div>
+            )}
+
+            {endpointResults && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Endpoint Test Results:</p>
+                {endpointResults.error ? (
+                  <div className="bg-red-50 p-3 rounded-lg">
+                    <p className="text-sm text-red-800">Error: {endpointResults.error}</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {endpointResults.results?.map((result: any, index: number) => (
+                      <div key={index} className="bg-gray-50 p-3 rounded-lg">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-xs font-mono break-all">{result.endpoint}</span>
+                          <Badge className={result.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+                            {result.status}
+                          </Badge>
+                        </div>
+                        {result.success && result.dataPreview && (
+                          <p className="text-xs text-green-700">
+                            ✅ Services: {result.dataPreview.serviceCount}
+                          </p>
+                        )}
+                        {result.error && (
+                          <p className="text-xs text-red-700">❌ {result.error}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
@@ -170,22 +227,12 @@ const DebugPanel = () => {
             </div>
 
             <div className="bg-yellow-50 p-3 rounded-lg">
-              <p className="text-sm font-medium text-yellow-800 mb-1">Common Issues:</p>
+              <p className="text-sm font-medium text-yellow-800 mb-1">Troubleshooting:</p>
               <ul className="text-xs text-yellow-700 space-y-1">
-                <li>• API key not set in Supabase secrets</li>
-                <li>• Invalid or expired LTA API key</li>
-                <li>• LTA DataMall terms not accepted</li>
-                <li>• Rate limiting (too many requests)</li>
-                <li>• Case-sensitive API endpoint names</li>
-              </ul>
-            </div>
-
-            <div className="bg-green-50 p-3 rounded-lg">
-              <p className="text-sm font-medium text-green-800 mb-1">API Endpoint Info:</p>
-              <ul className="text-xs text-green-700 space-y-1">
-                <li>• Bus Stops: BusStops (working ✅)</li>
-                <li>• Bus Arrival: BusArrivalV2 (note: capital 'V')</li>
-                <li>• Testing with stop 03111 (Raffles Place MRT)</li>
+                <li>• Use "Test Endpoints" to find the correct API URL</li>
+                <li>• Check if your LTA API key is valid and active</li>
+                <li>• Ensure you've accepted LTA DataMall terms</li>
+                <li>• Try different endpoint variations</li>
               </ul>
             </div>
           </div>
