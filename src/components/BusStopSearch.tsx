@@ -21,6 +21,7 @@ const BusStopSearch = ({ onSelectStop }: BusStopSearchProps) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<BusStopInfo[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
+  const [hasSearched, setHasSearched] = useState(false);
   const { loading, searchBusStops } = useLTAData();
 
   // Load favorites from localStorage
@@ -33,10 +34,13 @@ const BusStopSearch = ({ onSelectStop }: BusStopSearchProps) => {
   });
 
   const handleSearch = async () => {
-    if (!searchQuery.trim()) return;
+    setHasSearched(true);
     
     const results = await searchBusStops(searchQuery);
-    setSearchResults(results.slice(0, 10)); // Limit to 10 results
+    console.log(`Search results for "${searchQuery}":`, results.length, 'stops');
+    
+    // Show more results - up to 50 instead of 10
+    setSearchResults(results.slice(0, 50));
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -83,12 +87,21 @@ const BusStopSearch = ({ onSelectStop }: BusStopSearchProps) => {
         </Button>
       </div>
 
+      {hasSearched && (
+        <div className="mb-2">
+          <p className="text-sm text-gray-600">
+            {loading ? 'Searching...' : `Found ${searchResults.length} bus stops`}
+            {searchQuery.trim() && ` for "${searchQuery}"`}
+          </p>
+        </div>
+      )}
+
       {searchResults.length > 0 && (
-        <div className="space-y-2 max-h-60 overflow-y-auto">
+        <div className="space-y-2 max-h-96 overflow-y-auto border rounded-lg">
           {searchResults.map((stop) => (
             <Card 
               key={stop.stopCode} 
-              className="cursor-pointer hover:bg-gray-50 transition-colors"
+              className="cursor-pointer hover:bg-gray-50 transition-colors border-0 shadow-none"
               onClick={() => onSelectStop(stop)}
             >
               <CardContent className="p-3">
@@ -117,6 +130,13 @@ const BusStopSearch = ({ onSelectStop }: BusStopSearchProps) => {
               </CardContent>
             </Card>
           ))}
+        </div>
+      )}
+
+      {hasSearched && searchResults.length === 0 && !loading && (
+        <div className="text-center py-8 text-gray-500">
+          <p>No bus stops found</p>
+          <p className="text-sm mt-1">Try a different search term or check your spelling</p>
         </div>
       )}
     </div>
