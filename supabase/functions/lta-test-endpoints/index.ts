@@ -23,62 +23,44 @@ serve(async (req) => {
       )
     }
 
-    const testResults = []
-
-    // Test different possible endpoints for bus arrival
-    const possibleEndpoints = [
-      'https://datamall2.mytransport.sg/ltaodataservice/BusArrivalV2?BusStopCode=03111',
-      'https://datamall2.mytransport.sg/ltaodataservice/BusArrival?BusStopCode=03111',
-      'https://datamall2.mytransport.sg/ltaodataservice/v3/BusArrival?BusStopCode=03111',
-      'https://datamall2.mytransport.sg/ltaodataservice/BusArrivalv2?BusStopCode=03111'
-    ]
-
-    for (const endpoint of possibleEndpoints) {
-      try {
-        console.log(`Testing endpoint: ${endpoint}`)
-        
-        const response = await fetch(endpoint, {
-          headers: {
-            'AccountKey': ltaApiKey,
-            'Accept': 'application/json'
-          }
-        })
-
-        const result = {
-          endpoint,
-          status: response.status,
-          statusText: response.statusText,
-          success: response.ok
-        }
-
-        if (response.ok) {
-          const data = await response.json()
-          result.dataPreview = {
-            hasServices: !!data.Services,
-            serviceCount: data.Services?.length || 0,
-            sampleService: data.Services?.[0] || null
-          }
-        } else {
-          const errorText = await response.text()
-          result.error = errorText
-        }
-
-        testResults.push(result)
-        console.log(`Result for ${endpoint}:`, JSON.stringify(result, null, 2))
-
-      } catch (error) {
-        testResults.push({
-          endpoint,
-          status: 'ERROR',
-          error: error.message
-        })
+    // Only test the working v3 endpoint
+    const endpoint = 'https://datamall2.mytransport.sg/ltaodataservice/v3/BusArrival?BusStopCode=03111'
+    
+    console.log(`Testing working endpoint: ${endpoint}`)
+    
+    const response = await fetch(endpoint, {
+      headers: {
+        'AccountKey': ltaApiKey,
+        'Accept': 'application/json'
       }
+    })
+
+    const result = {
+      endpoint,
+      status: response.status,
+      statusText: response.statusText,
+      success: response.ok
     }
+
+    if (response.ok) {
+      const data = await response.json()
+      result.dataPreview = {
+        hasServices: !!data.Services,
+        serviceCount: data.Services?.length || 0,
+        sampleService: data.Services?.[0] || null,
+        busStopCode: data.BusStopCode
+      }
+    } else {
+      const errorText = await response.text()
+      result.error = errorText
+    }
+
+    console.log(`Result:`, JSON.stringify(result, null, 2))
 
     return new Response(
       JSON.stringify({ 
-        message: 'LTA API endpoint test results',
-        results: testResults,
+        message: 'LTA v3/BusArrival endpoint test',
+        result: result,
         timestamp: new Date().toISOString()
       }),
       { 
@@ -90,7 +72,7 @@ serve(async (req) => {
     console.error('Error in test function:', error)
     return new Response(
       JSON.stringify({ 
-        error: 'Failed to test endpoints', 
+        error: 'Failed to test endpoint', 
         details: error.message 
       }),
       { 
