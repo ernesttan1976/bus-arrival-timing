@@ -66,7 +66,21 @@ const Index = () => {
     if (arrivalData && arrivalData.services) {
       const arrivals: BusArrival[] = [];
       
-      arrivalData.services.forEach(service => {
+      // Sort services alphabetically by bus number
+      const sortedServices = arrivalData.services.sort((a, b) => {
+        // Handle numeric sorting properly (e.g., 2 comes before 14)
+        const aNum = parseInt(a.busNumber);
+        const bNum = parseInt(b.busNumber);
+        
+        if (!isNaN(aNum) && !isNaN(bNum)) {
+          return aNum - bNum;
+        }
+        
+        // Fallback to string comparison for non-numeric bus numbers
+        return a.busNumber.localeCompare(b.busNumber);
+      });
+
+      sortedServices.forEach(service => {
         // Skip if bus service is filtered out
         if (busFilters.length > 0 && !busFilters.includes(service.busNumber)) {
           return;
@@ -103,8 +117,8 @@ const Index = () => {
         }
       });
 
-      // Sort by arrival time
-      arrivals.sort((a, b) => a.arrivalTime - b.arrivalTime);
+      // No need to sort arrivals again since we're already processing services in order
+      // and adding their timings sequentially
 
       const busStopData: BusStopData = {
         stopName: stop.stopName,
