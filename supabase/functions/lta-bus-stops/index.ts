@@ -13,8 +13,8 @@ serve(async (req) => {
   try {
     const { searchQuery, skip = 0 } = await req.json()
     
-    // LTA DataMall API endpoint for bus stops
-    const ltaUrl = `http://datamall2.mytransport.sg/ltaodataservice/BusStops?$skip=${skip}`
+    // Fixed LTA DataMall API endpoint - changed to HTTPS
+    const ltaUrl = `https://datamall2.mytransport.sg/ltaodataservice/BusStops?$skip=${skip}`
     
     const ltaApiKey = Deno.env.get('LTA_API_KEY')
     
@@ -28,6 +28,9 @@ serve(async (req) => {
       )
     }
 
+    console.log(`Fetching from LTA API: ${ltaUrl}`)
+    console.log(`Using API key: ${ltaApiKey.substring(0, 8)}...`)
+
     const response = await fetch(ltaUrl, {
       headers: {
         'AccountKey': ltaApiKey,
@@ -35,11 +38,16 @@ serve(async (req) => {
       }
     })
 
+    console.log(`LTA API response status: ${response.status}`)
+
     if (!response.ok) {
+      const errorText = await response.text()
+      console.error(`LTA API error: ${response.status} - ${errorText}`)
       throw new Error(`LTA API error: ${response.status}`)
     }
 
     const data = await response.json()
+    console.log(`Received ${data.value?.length || 0} bus stops from LTA API`)
     
     let busStops = data.value || []
     
@@ -62,6 +70,8 @@ serve(async (req) => {
       longitude: stop.Longitude
     }))
 
+    console.log(`Returning ${transformedStops.length} filtered bus stops`)
+
     return new Response(
       JSON.stringify({ busStops: transformedStops }),
       { 
@@ -72,7 +82,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error fetching LTA bus stops:', error)
     return new Response(
-      JSON.stringify({ error: 'Failed to fetch bus stops data' }),
+      JSON.stringify({ error: 'Failed to fetch bus stops data', details: error.message }),
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }

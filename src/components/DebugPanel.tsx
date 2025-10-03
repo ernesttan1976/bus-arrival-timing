@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bug, ChevronDown, ChevronUp } from 'lucide-react';
+import { Bug, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -16,32 +16,47 @@ const DebugPanel = () => {
       supabaseConnection: 'Unknown',
       ltaBusStops: 'Unknown',
       ltaBusArrival: 'Unknown',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      details: {}
     };
 
     try {
-      // Test Supabase connection
-      const { data: healthCheck } = await supabase.functions.invoke('lta-bus-stops', {
-        body: { searchQuery: 'test', skip: 0 }
+      // Test Supabase connection with bus stops
+      console.log('Testing LTA bus stops API...');
+      const { data: busStopsData, error: busStopsError } = await supabase.functions.invoke('lta-bus-stops', {
+        body: { searchQuery: '', skip: 0 }
       });
+      
       results.supabaseConnection = 'Connected';
       
-      // Test LTA bus stops API
-      if (healthCheck?.error) {
-        results.ltaBusStops = `Error: ${healthCheck.error}`;
-      } else if (healthCheck?.busStops) {
-        results.ltaBusStops = `Success: ${healthCheck.busStops.length} stops returned`;
+      if (busStopsError) {
+        results.ltaBusStops = `Error: ${busStopsError.message}`;
+        results.details.busStopsError = busStopsError;
+      } else if (busStopsData?.error) {
+        results.ltaBusStops = `API Error: ${busStopsData.error}`;
+        if (busStopsData.details) {
+          results.details.busStopsDetails = busStopsData.details;
+        }
+      } else if (busStopsData?.busStops) {
+        results.ltaBusStops = `Success: ${busStopsData.busStops.length} stops returned`;
       } else {
         results.ltaBusStops = 'No data returned';
       }
 
       // Test LTA bus arrival API with a known stop code
-      const { data: arrivalData } = await supabase.functions.invoke('lta-bus-arrival', {
+      console.log('Testing LTA bus arrival API...');
+      const { data: arrivalData, error: arrivalError } = await supabase.functions.invoke('lta-bus-arrival', {
         body: { busStopCode: '01012' } // Orchard Road stop
       });
       
-      if (arrivalData?.error) {
-        results.ltaBusArrival = `Error: ${arrivalData.error}`;
+      if (arrivalError) {
+        results.ltaBusArrival = `Error: ${arrivalError.message}`;
+        results.details.arrivalError = arrivalError;
+      } else if (arrivalData?.error) {
+        results.ltaBusArrival = `API Error: ${arrivalData.error}`;
+        if (arrivalData.details) {
+          results.details.arrivalDetails = arrivalData.details;
+        }
       } else if (arrivalData?.services) {
         results.ltaBusArrival = `Success: ${arrivalData.services.length} services returned`;
       } else {
@@ -49,7 +64,9 @@ const DebugPanel = () => {
       }
 
     } catch (error: any) {
+      console.error('Connection test error:', error);
       results.supabaseConnection = `Error: ${error.message}`;
+      results.details.connectionError = error;
     }
 
     setTestResults(results);
@@ -58,7 +75,7 @@ const DebugPanel = () => {
 
   const getStatusColor = (status: string) => {
     if (status.includes('Success') || status === 'Connected') return 'bg-green-100 text-green-800';
-    if (status.includes('Error')) return 'bg-red-100 text-red-800';
+    if (status.includes('Error') || status.includes('API Error')) return 'bg-red-100 text-red-800';
     return 'bg-yellow-100 text-yellow-800';
   };
 
@@ -114,6 +131,16 @@ const DebugPanel = () => {
                     </Badge>
                   </div>
                 </div>
+                
+                {testResults.details && Object.keys(testResults.details).length > 0 && (
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <p className="text-sm font-medium text-gray-800 mb-2">Error Details:</p>
+                    <pre className="text-xs text-gray-600 overflow-auto max-h-32">
+                      {JSON.stringify(testResults.details, null, 2)}
+                    </pre>
+                  </div>
+                )}
+                
                 <p className="text-xs text-gray-500">
                   Last tested: {new Date(testResults.timestamp).toLocaleString()}
                 </p>
@@ -126,8 +153,30 @@ const DebugPanel = () => {
                 <li>1. Go to your Supabase project dashboard</li>
                 <li>2. Navigate to Edge Functions → Manage Secrets</li>
                 <li>3. Add secret: Key = "LTA_API_KEY", Value = your LTA DataMall API key</li>
-                <li>4. Get your API key from: <a href="https://datamall.lta.gov.sg/content/datamall/en/request-for-api.html" target="_blank" className="underline">LTA DataMall</a></li>
+                <li className="flex items-center gap-1">
+                  4. Get your API key from: 
+                  <a 
+                    href="https://datamall.lta.gov.sg/content/datamall/en/request-for-api.html" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="underline flex items-center gap-1"
+                  >
+                    LTA DataMall <ExternalLink className="w-3 h-3" />
+                  </a>
+                </li>
+                <li>5. Make sure to accept the terms and conditions on LTA DataMall</li>
+                <li>6. Wait a few minutes after adding the API key before testing</li>
               </ol>
+            </div>
+
+            <div className="bg-yellow-50 p-3 rounded-lg">
+              <p className="text-sm font-medium text-yellow-800 mb-1">Common Issues:</p>
+              <ul className="text-xs text-yellow-700 space-y-1">
+                <li>• API key not set in Supabase secrets</li>
+                <li>• Invalid or expired LTA API key</li>
+                <li>• LTA DataMall terms not accepted</li>
+                <li>• Rate limiting (too many requests)</li>
+              </ul>
             </div>
           </div>
         </CardContent>

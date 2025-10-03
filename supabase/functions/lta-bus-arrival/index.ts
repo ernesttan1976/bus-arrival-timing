@@ -23,10 +23,9 @@ serve(async (req) => {
       )
     }
 
-    // LTA DataMall API endpoint
-    const ltaUrl = `http://datamall2.mytransport.sg/ltaodataservice/BusArrivalv2?BusStopCode=${busStopCode}`
+    // Fixed LTA DataMall API endpoint - changed to HTTPS
+    const ltaUrl = `https://datamall2.mytransport.sg/ltaodataservice/BusArrivalv2?BusStopCode=${busStopCode}`
     
-    // You'll need to set this in Supabase Console under Edge Functions -> Manage Secrets
     const ltaApiKey = Deno.env.get('LTA_API_KEY')
     
     if (!ltaApiKey) {
@@ -39,6 +38,9 @@ serve(async (req) => {
       )
     }
 
+    console.log(`Fetching bus arrival for stop ${busStopCode}`)
+    console.log(`Using API key: ${ltaApiKey.substring(0, 8)}...`)
+
     const response = await fetch(ltaUrl, {
       headers: {
         'AccountKey': ltaApiKey,
@@ -46,11 +48,16 @@ serve(async (req) => {
       }
     })
 
+    console.log(`LTA API response status: ${response.status}`)
+
     if (!response.ok) {
+      const errorText = await response.text()
+      console.error(`LTA API error: ${response.status} - ${errorText}`)
       throw new Error(`LTA API error: ${response.status}`)
     }
 
     const data = await response.json()
+    console.log(`Received data for ${data.Services?.length || 0} bus services`)
     
     // Transform LTA data to our format
     const transformedData = {
@@ -93,9 +100,9 @@ serve(async (req) => {
     )
 
   } catch (error) {
-    console.error('Error fetching LTA data:', error)
+    console.error('Error fetching LTA bus arrival data:', error)
     return new Response(
-      JSON.stringify({ error: 'Failed to fetch bus arrival data' }),
+      JSON.stringify({ error: 'Failed to fetch bus arrival data', details: error.message }),
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
