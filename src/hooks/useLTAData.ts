@@ -38,43 +38,34 @@ interface BusStopInfo {
   longitude: number;
 }
 
-// Mock data for testing
+// Enhanced mock data for testing
 const mockBusStops: BusStopInfo[] = [
-  {
-    stopCode: '01012',
-    stopName: 'Orchard Road',
-    roadName: 'Orchard Road',
-    latitude: 1.3048,
-    longitude: 103.8318
-  },
-  {
-    stopCode: '02013',
-    stopName: 'Marina Bay Sands',
-    roadName: 'Bayfront Avenue',
-    latitude: 1.2834,
-    longitude: 103.8607
-  },
-  {
-    stopCode: '03014',
-    stopName: 'Raffles Place MRT',
-    roadName: 'Raffles Quay',
-    latitude: 1.2837,
-    longitude: 103.8516
-  },
-  {
-    stopCode: '04015',
-    stopName: 'Bugis Junction',
-    roadName: 'Victoria Street',
-    latitude: 1.2993,
-    longitude: 103.8547
-  },
-  {
-    stopCode: '05016',
-    stopName: 'Clarke Quay MRT',
-    roadName: 'North Bridge Road',
-    latitude: 1.2886,
-    longitude: 103.8467
-  }
+  // Orchard Road stops
+  { stopCode: '09037', stopName: 'Orchard Rd', roadName: 'Orchard Road', latitude: 1.304833, longitude: 103.831833 },
+  { stopCode: '09047', stopName: 'Orchard Plaza', roadName: 'Orchard Road', latitude: 1.305833, longitude: 103.830833 },
+  { stopCode: '09023', stopName: 'Somerset MRT', roadName: 'Orchard Road', latitude: 1.300694, longitude: 103.839028 },
+  
+  // Marina Bay stops
+  { stopCode: '02059', stopName: 'Marina Bay Sands', roadName: 'Bayfront Avenue', latitude: 1.283417, longitude: 103.860694 },
+  { stopCode: '02049', stopName: 'Raffles Place MRT', roadName: 'Raffles Quay', latitude: 1.283694, longitude: 103.851556 },
+  
+  // Bugis stops
+  { stopCode: '01012', stopName: 'Bugis Junction', roadName: 'Victoria Street', latitude: 1.299306, longitude: 103.854694 },
+  { stopCode: '01022', stopName: 'Bugis MRT', roadName: 'North Bridge Road', latitude: 1.299833, longitude: 103.855556 },
+  
+  // Clarke Quay stops
+  { stopCode: '03111', stopName: 'Clarke Quay MRT', roadName: 'North Bridge Road', latitude: 1.288611, longitude: 103.846722 },
+  
+  // Chinatown stops
+  { stopCode: '04168', stopName: 'Chinatown MRT', roadName: 'New Bridge Road', latitude: 1.284528, longitude: 103.844139 },
+  
+  // Little India stops
+  { stopCode: '48009', stopName: 'Little India MRT', roadName: 'Serangoon Road', latitude: 1.306722, longitude: 103.849306 },
+  
+  // Additional stops for better search results
+  { stopCode: '28009', stopName: 'Ang Mo Kio Hub', roadName: 'Ang Mo Kio Avenue 3', latitude: 1.369028, longitude: 103.848472 },
+  { stopCode: '59009', stopName: 'Jurong East MRT', roadName: 'Jurong East Street 13', latitude: 1.333194, longitude: 103.742472 },
+  { stopCode: '65009', stopName: 'Tampines MRT', roadName: 'Tampines Central 1', latitude: 1.354028, longitude: 103.942694 },
 ];
 
 const mockBusServices: { [key: string]: BusService[] } = {
@@ -94,13 +85,22 @@ const mockBusServices: { [key: string]: BusService[] } = {
       nextBus3: { arrivalTime: 25, load: 'SDA', feature: 'WAB', type: 'SD' }
     }
   ],
-  '02013': [
+  '02059': [
     {
       busNumber: '97',
       operator: 'SBST',
       nextBus: { arrivalTime: 0, load: 'LSD', feature: 'WAB', type: 'SD' },
       nextBus2: { arrivalTime: 10, load: 'SEA', feature: 'WAB', type: 'SD' },
       nextBus3: { arrivalTime: 20, load: 'SDA', feature: 'WAB', type: 'SD' }
+    }
+  ],
+  '03111': [
+    {
+      busNumber: '2',
+      operator: 'SBST',
+      nextBus: { arrivalTime: 3, load: 'SEA', feature: 'WAB', type: 'SD' },
+      nextBus2: { arrivalTime: 13, load: 'SDA', feature: 'WAB', type: 'SD' },
+      nextBus3: { arrivalTime: 23, load: 'SEA', feature: 'WAB', type: 'SD' }
     }
   ]
 };
@@ -128,12 +128,14 @@ export const useLTAData = (useMockData: boolean = false) => {
       });
 
       if (error) {
+        console.error('Bus arrival error:', error);
         showError('Failed to fetch bus arrival data');
         return null;
       }
 
       return data;
     } catch (error) {
+      console.error('Bus arrival network error:', error);
       showError('Network error while fetching bus data');
       return null;
     } finally {
@@ -150,28 +152,45 @@ export const useLTAData = (useMockData: boolean = false) => {
         await new Promise(resolve => setTimeout(resolve, 300));
         
         if (!searchQuery.trim()) {
+          console.log('Mock data: Returning all stops');
           return mockBusStops;
         }
         
         const query = searchQuery.toLowerCase();
-        return mockBusStops.filter(stop => 
+        const filtered = mockBusStops.filter(stop => 
           stop.stopName.toLowerCase().includes(query) ||
           stop.stopCode.toLowerCase().includes(query) ||
           stop.roadName.toLowerCase().includes(query)
         );
+        
+        console.log(`Mock data: Found ${filtered.length} stops for "${searchQuery}"`);
+        return filtered;
       }
 
+      console.log(`Searching LTA API for: "${searchQuery}"`);
+      
       const { data, error } = await supabase.functions.invoke('lta-bus-stops', {
         body: { searchQuery, skip: 0 }
       });
 
       if (error) {
+        console.error('Bus stops search error:', error);
         showError('Failed to search bus stops');
         return [];
       }
 
-      return data.busStops || [];
+      if (data?.error) {
+        console.error('LTA API error:', data.error);
+        showError(`LTA API error: ${data.error}`);
+        return [];
+      }
+
+      const busStops = data.busStops || [];
+      console.log(`LTA API returned ${busStops.length} bus stops`);
+      
+      return busStops;
     } catch (error) {
+      console.error('Bus stops search network error:', error);
       showError('Network error while searching bus stops');
       return [];
     } finally {
