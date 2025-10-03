@@ -102,7 +102,7 @@ const BusStop = ({ stopName, stopCode, arrivals }: BusStopProps) => {
                     {busArrivals.map((arrival, index) => (
                       <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <Badge className={`text-xs ${getCrowdLevel(arrival.crowdLevel)}`}>
+                          <Badge className={`text-xs ${getCrowdColor(arrival.crowdLevel)}`}>
                             {arrival.crowdLevel} crowd
                           </Badge>
                           <Badge className={`text-xs ${getBusTypeColor(arrival.isDecker)}`}>
