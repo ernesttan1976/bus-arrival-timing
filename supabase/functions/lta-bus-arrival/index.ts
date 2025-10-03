@@ -84,31 +84,72 @@ serve(async (req) => {
       }
     };
 
+    // Helper function to decode bus type
+    const decodeBusType = (type: string): { description: string, isDecker: 'single' | 'double' | 'unknown' } => {
+      switch (type) {
+        case 'SD': return { description: 'Single Decker', isDecker: 'single' };
+        case 'DD': return { description: 'Double Decker', isDecker: 'double' };
+        case 'BD': return { description: 'Bendy Bus', isDecker: 'single' };
+        default: return { description: type || 'Unknown', isDecker: 'unknown' };
+      }
+    };
+
+    // Helper function to decode wheelchair accessibility
+    const decodeFeature = (feature: string): string => {
+      switch (feature) {
+        case 'WAB': return 'Wheelchair Accessible';
+        case '': return 'Standard';
+        default: return feature || 'Standard';
+      }
+    };
+
     // Transform LTA data to our format
     const transformedData = {
       stopCode: busStopCode,
-      services: (data.Services || []).map((service: any) => ({
-        busNumber: service.ServiceNo || 'Unknown',
-        operator: service.Operator || 'Unknown',
-        nextBus: {
-          arrivalTime: calculateArrivalTime(service.NextBus?.EstimatedArrival),
-          load: service.NextBus?.Load || 'SEA',
-          feature: service.NextBus?.Feature || 'WAB',
-          type: service.NextBus?.Type || 'SD'
-        },
-        nextBus2: {
-          arrivalTime: calculateArrivalTime(service.NextBus2?.EstimatedArrival),
-          load: service.NextBus2?.Load || 'SEA',
-          feature: service.NextBus2?.Feature || 'WAB',
-          type: service.NextBus2?.Type || 'SD'
-        },
-        nextBus3: {
-          arrivalTime: calculateArrivalTime(service.NextBus3?.EstimatedArrival),
-          load: service.NextBus3?.Load || 'SEA',
-          feature: service.NextBus3?.Feature || 'WAB',
-          type: service.NextBus3?.Type || 'SD'
+      services: (data.Services || []).map((service: any) => {
+        const nextBusType = decodeBusType(service.NextBus?.Type);
+        const nextBus2Type = decodeBusType(service.NextBus2?.Type);
+        const nextBus3Type = decodeBusType(service.NextBus3?.Type);
+
+        return {
+          busNumber: service.ServiceNo || 'Unknown',
+          operator: service.Operator || 'Unknown',
+          nextBus: {
+            arrivalTime: calculateArrivalTime(service.NextBus?.EstimatedArrival),
+            load: service.NextBus?.Load || 'SEA',
+            feature: service.NextBus?.Feature || 'WAB',
+            featureDescription: decodeFeature(service.NextBus?.Feature),
+            type: service.NextBus?.Type || 'SD',
+            typeDescription: nextBusType.description,
+            isDecker: nextBusType.isDecker,
+            // Note: LTA API doesn't provide license plate or specific model info
+            licensePlate: null, // Not available in LTA API
+            model: null // Not available in LTA API
+          },
+          nextBus2: {
+            arrivalTime: calculateArrivalTime(service.NextBus2?.EstimatedArrival),
+            load: service.NextBus2?.Load || 'SEA',
+            feature: service.NextBus2?.Feature || 'WAB',
+            featureDescription: decodeFeature(service.NextBus2?.Feature),
+            type: service.NextBus2?.Type || 'SD',
+            typeDescription: nextBus2Type.description,
+            isDecker: nextBus2Type.isDecker,
+            licensePlate: null,
+            model: null
+          },
+          nextBus3: {
+            arrivalTime: calculateArrivalTime(service.NextBus3?.EstimatedArrival),
+            load: service.NextBus3?.Load || 'SEA',
+            feature: service.NextBus3?.Feature || 'WAB',
+            featureDescription: decodeFeature(service.NextBus3?.Feature),
+            type: service.NextBus3?.Type || 'SD',
+            typeDescription: nextBus3Type.description,
+            isDecker: nextBus3Type.isDecker,
+            licensePlate: null,
+            model: null
+          }
         }
-      }))
+      })
     }
 
     console.log(`✅ v3 SUCCESS: Returning ${transformedData.services.length} bus services for stop ${busStopCode}`)

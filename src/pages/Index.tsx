@@ -15,6 +15,9 @@ interface BusArrival {
   destination: string;
   arrivalTime: number;
   crowdLevel: 'low' | 'medium' | 'high';
+  busType: string;
+  isDecker: 'single' | 'double' | 'unknown';
+  isWheelchairAccessible: boolean;
 }
 
 interface BusStopData {
@@ -92,7 +95,10 @@ const Index = () => {
             busNumber: service.busNumber,
             destination: "Various", // LTA doesn't provide destination in arrival API
             arrivalTime: service.nextBus.arrivalTime,
-            crowdLevel: getCrowdLevel(service.nextBus.load)
+            crowdLevel: getCrowdLevel(service.nextBus.load),
+            busType: service.nextBus.typeDescription,
+            isDecker: service.nextBus.isDecker,
+            isWheelchairAccessible: service.nextBus.feature === 'WAB'
           });
         }
         
@@ -102,7 +108,10 @@ const Index = () => {
             busNumber: service.busNumber,
             destination: "Various",
             arrivalTime: service.nextBus2.arrivalTime,
-            crowdLevel: getCrowdLevel(service.nextBus2.load)
+            crowdLevel: getCrowdLevel(service.nextBus2.load),
+            busType: service.nextBus2.typeDescription,
+            isDecker: service.nextBus2.isDecker,
+            isWheelchairAccessible: service.nextBus2.feature === 'WAB'
           });
         }
         
@@ -112,13 +121,13 @@ const Index = () => {
             busNumber: service.busNumber,
             destination: "Various",
             arrivalTime: service.nextBus3.arrivalTime,
-            crowdLevel: getCrowdLevel(service.nextBus3.load)
+            crowdLevel: getCrowdLevel(service.nextBus3.load),
+            busType: service.nextBus3.typeDescription,
+            isDecker: service.nextBus3.isDecker,
+            isWheelchairAccessible: service.nextBus3.feature === 'WAB'
           });
         }
       });
-
-      // No need to sort arrivals again since we're already processing services in order
-      // and adding their timings sequentially
 
       const busStopData: BusStopData = {
         stopName: stop.stopName,

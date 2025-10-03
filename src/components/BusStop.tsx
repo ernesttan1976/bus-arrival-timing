@@ -1,4 +1,4 @@
-import { Clock, MapPin } from "lucide-react";
+import { Clock, MapPin, Accessibility } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
@@ -7,6 +7,9 @@ interface BusArrival {
   destination: string;
   arrivalTime: number; // minutes
   crowdLevel: 'low' | 'medium' | 'high';
+  busType: string;
+  isDecker: 'single' | 'double' | 'unknown';
+  isWheelchairAccessible: boolean;
 }
 
 interface BusStopProps {
@@ -22,6 +25,22 @@ const BusStop = ({ stopName, stopCode, arrivals }: BusStopProps) => {
       case 'medium': return 'bg-yellow-100 text-yellow-800';
       case 'high': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getBusTypeColor = (isDecker: string) => {
+    switch (isDecker) {
+      case 'double': return 'bg-purple-100 text-purple-800';
+      case 'single': return 'bg-blue-100 text-blue-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getBusTypeIcon = (isDecker: string) => {
+    switch (isDecker) {
+      case 'double': return '🚌🚌'; // Double decker representation
+      case 'single': return '🚌';
+      default: return '🚐';
     }
   };
 
@@ -81,11 +100,20 @@ const BusStop = ({ stopName, stopCode, arrivals }: BusStopProps) => {
                   
                   <div className="space-y-2">
                     {busArrivals.map((arrival, index) => (
-                      <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                        <div className="flex items-center gap-2">
-                          <Badge className={`text-xs ${getCrowdColor(arrival.crowdLevel)}`}>
+                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge className={`text-xs ${getCrowdLevel(arrival.crowdLevel)}`}>
                             {arrival.crowdLevel} crowd
                           </Badge>
+                          <Badge className={`text-xs ${getBusTypeColor(arrival.isDecker)}`}>
+                            {getBusTypeIcon(arrival.isDecker)} {arrival.busType}
+                          </Badge>
+                          {arrival.isWheelchairAccessible && (
+                            <Badge className="text-xs bg-green-100 text-green-800">
+                              <Accessibility className="w-3 h-3 mr-1" />
+                              Accessible
+                            </Badge>
+                          )}
                         </div>
                         <div className="flex items-center text-right">
                           <Clock className="w-4 h-4 mr-1 text-gray-500" />

@@ -9,19 +9,34 @@ interface BusService {
     arrivalTime: number | null;
     load: string;
     feature: string;
+    featureDescription: string;
     type: string;
+    typeDescription: string;
+    isDecker: 'single' | 'double' | 'unknown';
+    licensePlate: string | null;
+    model: string | null;
   };
   nextBus2: {
     arrivalTime: number | null;
     load: string;
     feature: string;
+    featureDescription: string;
     type: string;
+    typeDescription: string;
+    isDecker: 'single' | 'double' | 'unknown';
+    licensePlate: string | null;
+    model: string | null;
   };
   nextBus3: {
     arrivalTime: number | null;
     load: string;
     feature: string;
+    featureDescription: string;
     type: string;
+    typeDescription: string;
+    isDecker: 'single' | 'double' | 'unknown';
+    licensePlate: string | null;
+    model: string | null;
   };
 }
 
@@ -74,34 +89,154 @@ const mockBusServices: { [key: string]: BusService[] } = {
     {
       busNumber: '14',
       operator: 'SBST',
-      nextBus: { arrivalTime: 2, load: 'SEA', feature: 'WAB', type: 'SD' },
-      nextBus2: { arrivalTime: 12, load: 'SDA', feature: 'WAB', type: 'SD' },
-      nextBus3: { arrivalTime: 22, load: 'SEA', feature: 'WAB', type: 'SD' }
+      nextBus: { 
+        arrivalTime: 2, 
+        load: 'SEA', 
+        feature: 'WAB', 
+        featureDescription: 'Wheelchair Accessible',
+        type: 'DD', 
+        typeDescription: 'Double Decker',
+        isDecker: 'double',
+        licensePlate: null,
+        model: null
+      },
+      nextBus2: { 
+        arrivalTime: 12, 
+        load: 'SDA', 
+        feature: 'WAB', 
+        featureDescription: 'Wheelchair Accessible',
+        type: 'SD', 
+        typeDescription: 'Single Decker',
+        isDecker: 'single',
+        licensePlate: null,
+        model: null
+      },
+      nextBus3: { 
+        arrivalTime: 22, 
+        load: 'SEA', 
+        feature: 'WAB', 
+        featureDescription: 'Wheelchair Accessible',
+        type: 'DD', 
+        typeDescription: 'Double Decker',
+        isDecker: 'double',
+        licensePlate: null,
+        model: null
+      }
     },
     {
       busNumber: '111',
       operator: 'SBST',
-      nextBus: { arrivalTime: 5, load: 'SEA', feature: 'WAB', type: 'SD' },
-      nextBus2: { arrivalTime: 15, load: 'LSD', feature: 'WAB', type: 'SD' },
-      nextBus3: { arrivalTime: 25, load: 'SDA', feature: 'WAB', type: 'SD' }
+      nextBus: { 
+        arrivalTime: 5, 
+        load: 'SEA', 
+        feature: 'WAB', 
+        featureDescription: 'Wheelchair Accessible',
+        type: 'BD', 
+        typeDescription: 'Bendy Bus',
+        isDecker: 'single',
+        licensePlate: null,
+        model: null
+      },
+      nextBus2: { 
+        arrivalTime: 15, 
+        load: 'LSD', 
+        feature: 'WAB', 
+        featureDescription: 'Wheelchair Accessible',
+        type: 'SD', 
+        typeDescription: 'Single Decker',
+        isDecker: 'single',
+        licensePlate: null,
+        model: null
+      },
+      nextBus3: { 
+        arrivalTime: 25, 
+        load: 'SDA', 
+        feature: 'WAB', 
+        featureDescription: 'Wheelchair Accessible',
+        type: 'DD', 
+        typeDescription: 'Double Decker',
+        isDecker: 'double',
+        licensePlate: null,
+        model: null
+      }
     }
   ],
   '02059': [
     {
       busNumber: '97',
       operator: 'SBST',
-      nextBus: { arrivalTime: 0, load: 'LSD', feature: 'WAB', type: 'SD' },
-      nextBus2: { arrivalTime: 10, load: 'SEA', feature: 'WAB', type: 'SD' },
-      nextBus3: { arrivalTime: 20, load: 'SDA', feature: 'WAB', type: 'SD' }
+      nextBus: { 
+        arrivalTime: 0, 
+        load: 'LSD', 
+        feature: 'WAB', 
+        featureDescription: 'Wheelchair Accessible',
+        type: 'SD', 
+        typeDescription: 'Single Decker',
+        isDecker: 'single',
+        licensePlate: null,
+        model: null
+      },
+      nextBus2: { 
+        arrivalTime: 10, 
+        load: 'SEA', 
+        feature: 'WAB', 
+        featureDescription: 'Wheelchair Accessible',
+        type: 'DD', 
+        typeDescription: 'Double Decker',
+        isDecker: 'double',
+        licensePlate: null,
+        model: null
+      },
+      nextBus3: { 
+        arrivalTime: 20, 
+        load: 'SDA', 
+        feature: 'WAB', 
+        featureDescription: 'Wheelchair Accessible',
+        type: 'SD', 
+        typeDescription: 'Single Decker',
+        isDecker: 'single',
+        licensePlate: null,
+        model: null
+      }
     }
   ],
   '03111': [
     {
       busNumber: '2',
       operator: 'SBST',
-      nextBus: { arrivalTime: 3, load: 'SEA', feature: 'WAB', type: 'SD' },
-      nextBus2: { arrivalTime: 13, load: 'SDA', feature: 'WAB', type: 'SD' },
-      nextBus3: { arrivalTime: 23, load: 'SEA', feature: 'WAB', type: 'SD' }
+      nextBus: { 
+        arrivalTime: 3, 
+        load: 'SEA', 
+        feature: 'WAB', 
+        featureDescription: 'Wheelchair Accessible',
+        type: 'DD', 
+        typeDescription: 'Double Decker',
+        isDecker: 'double',
+        licensePlate: null,
+        model: null
+      },
+      nextBus2: { 
+        arrivalTime: 13, 
+        load: 'SDA', 
+        feature: 'WAB', 
+        featureDescription: 'Wheelchair Accessible',
+        type: 'SD', 
+        typeDescription: 'Single Decker',
+        isDecker: 'single',
+        licensePlate: null,
+        model: null
+      },
+      nextBus3: { 
+        arrivalTime: 23, 
+        load: 'SEA', 
+        feature: 'WAB', 
+        featureDescription: 'Wheelchair Accessible',
+        type: 'BD', 
+        typeDescription: 'Bendy Bus',
+        isDecker: 'single',
+        licensePlate: null,
+        model: null
+      }
     }
   ]
 };
