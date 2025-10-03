@@ -2,6 +2,9 @@ import { useState, useEffect } from "react";
 import BusStop from "@/components/BusStop";
 import BusStopSearch from "@/components/BusStopSearch";
 import RefreshButton from "@/components/RefreshButton";
+import { FavoriteStops } from "@/components/FavoriteStops";
+import NearbyStops from "@/components/NearbyStops";
+import BusServiceFilter from "@/components/BusServiceFilter";
 import { useLTAData } from "@/hooks/useLTAData";
 import { showSuccess, showError } from "@/utils/toast";
 
@@ -30,12 +33,27 @@ const Index = () => {
   const [selectedStops, setSelectedStops] = useState<BusStopInfo[]>([]);
   const [busStopsData, setBusStopsData] = useState<BusStopData[]>([]);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const [busFilters, setBusFilters] = useState<string[]>([]);
+  const [autoRefresh, setAutoRefresh] = useState(false);
   const { loading, getBusArrival, getCrowdLevel } = useLTAData();
+
+  // Auto-refresh functionality
+  useEffect(() => {
+    if (!autoRefresh || selectedStops.length === 0) return;
+
+    const interval = setInterval(() => {
+      handleRefresh(false); // Silent refresh
+    }, 30000); // Refresh every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [autoRefresh, selectedStops]);
 
   const handleSelectStop = (stop: BusStopInfo) => {
     if (!selectedStops.find(s => s.stopCode === stop.stopCode)) {
       setSelectedStops(prev => [...prev, stop]);
       fetchBusArrival(stop);
+    } else {
+      showError("Bus stop already added");
     }
   };
 
@@ -46,6 +64,11 @@ const Index = () => {
       const arrivals: BusArrival[] = [];
       
       arrivalData.services.forEach(service => {
+        // Skip if bus service is filtered out
+        if (busFilters.length > 0 && !busFilters.includes(service.busNumber)) {
+          return;
+        }
+
         // Add next bus if available
         if (service.nextBus.arrivalTime !== null) {
           arrivals.push({
@@ -91,15 +114,19 @@ const Index = () => {
         return [...filtered, busStopData];
       });
 
-      showSuccess(`Updated arrivals for ${stop.stopName}`);
+      if (!autoRefresh) {
+        showSuccess(`Updated arrivals for ${stop.stopName}`);
+      }
     } else {
-      showError(`No bus data available for ${stop.stopName}`);
+      if (!autoRefresh) {
+        showError(`No bus data available for ${stop.stopName}`);
+      }
     }
   };
 
-  const handleRefresh = async () => {
+  const handleRefresh = async (showToast = true) => {
     if (selectedStops.length === 0) {
-      showError("Please select a bus stop first");
+      if (showToast) showError("Please select a bus stop first");
       return;
     }
 
@@ -108,13 +135,20 @@ const Index = () => {
     }
     
     setLastUpdated(new Date());
-    showSuccess("All bus timings updated");
+    if (showToast) showSuccess("All bus timings updated");
   };
 
   const removeStop = (stopCode: string) => {
     setSelectedStops(prev => prev.filter(s => s.stopCode !== stopCode));
     setBusStopsData(prev => prev.filter(s => s.stopCode !== stopCode));
   };
+
+  // Re-fetch data when filters change
+  useEffect(() => {
+    if (selectedStops.length > 0) {
+      selectedStops.forEach(stop => fetchBusArrival(stop));
+    }
+  }, [busFilters]);
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">
@@ -124,15 +158,35 @@ const Index = () => {
           <p className="text-gray-600">Real-time bus arrival information from LTA DataMall</p>
         </div>
 
+        <FavoriteStops onSelectStop={handleSelectStop} />
+        <NearbyStops onSelectStop={handleSelectStop} />
         <BusStopSearch onSelectStop={handleSelectStop} />
 
         {selectedStops.length > 0 && (
-          <div className="flex justify-between items-center mb-4">
-            <p className="text-sm text-gray-500">
-              Last updated: {lastUpdated.toLocaleTimeString()}
-            </p>
-            <RefreshButton onRefresh={handleRefresh} />
-          </div>
+          <>
+            <BusServiceFilter 
+              onFilterChange={setBusFilters}
+              activeFilters={busFilters}
+            />
+            
+            <div className="flex justify-between items-center mb-4">
+              <div className="flex items-center gap-4">
+                <p className="text-sm text-gray-500">
+                  Last updated: {lastUpdated.toLocaleTimeString()}
+                </p>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={autoRefresh}
+                    onChange={(e) => setAutoRefresh(e.target.checked)}
+                    className="rounded"
+                  />
+                  Auto-refresh (30s)
+                </label>
+              </div>
+              <RefreshButton onRefresh={() => handleRefresh()} />
+            </div>
+          </>
         )}
 
         <div className="space-y-4">
@@ -146,7 +200,7 @@ const Index = () => {
               <div key={stop.stopCode} className="relative">
                 <button
                   onClick={() => removeStop(stop.stopCode)}
-                  className="absolute top-2 right-2 z-10 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+                  className="absolute top-2 right-2 z-10 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
                 >
                   ×
                 </button>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, MapPin } from 'lucide-react';
+import { Search, MapPin, Star, StarOff } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -20,7 +20,17 @@ interface BusStopSearchProps {
 const BusStopSearch = ({ onSelectStop }: BusStopSearchProps) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<BusStopInfo[]>([]);
+  const [favorites, setFavorites] = useState<string[]>([]);
   const { loading, searchBusStops } = useLTAData();
+
+  // Load favorites from localStorage
+  useState(() => {
+    const savedFavorites = localStorage.getItem('favoriteBusStops');
+    if (savedFavorites) {
+      const favStops = JSON.parse(savedFavorites);
+      setFavorites(favStops.map((stop: BusStopInfo) => stop.stopCode));
+    }
+  });
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
@@ -33,6 +43,25 @@ const BusStopSearch = ({ onSelectStop }: BusStopSearchProps) => {
     if (e.key === 'Enter') {
       handleSearch();
     }
+  };
+
+  const toggleFavorite = (stop: BusStopInfo, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    const savedFavorites = localStorage.getItem('favoriteBusStops');
+    let favStops: BusStopInfo[] = savedFavorites ? JSON.parse(savedFavorites) : [];
+    
+    const isFavorite = favStops.some(fav => fav.stopCode === stop.stopCode);
+    
+    if (isFavorite) {
+      favStops = favStops.filter(fav => fav.stopCode !== stop.stopCode);
+      setFavorites(prev => prev.filter(code => code !== stop.stopCode));
+    } else {
+      favStops.push(stop);
+      setFavorites(prev => [...prev, stop.stopCode]);
+    }
+    
+    localStorage.setItem('favoriteBusStops', JSON.stringify(favStops));
   };
 
   return (
@@ -64,13 +93,25 @@ const BusStopSearch = ({ onSelectStop }: BusStopSearchProps) => {
             >
               <CardContent className="p-3">
                 <div className="flex items-center justify-between">
-                  <div>
+                  <div className="flex-1">
                     <p className="font-medium text-sm">{stop.stopName}</p>
                     <p className="text-xs text-gray-500">{stop.roadName}</p>
                   </div>
-                  <div className="flex items-center text-xs text-gray-500">
-                    <MapPin className="w-3 h-3 mr-1" />
-                    {stop.stopCode}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={(e) => toggleFavorite(stop, e)}
+                      className="p-1 hover:bg-gray-200 rounded"
+                    >
+                      {favorites.includes(stop.stopCode) ? (
+                        <Star className="w-4 h-4 text-yellow-500 fill-current" />
+                      ) : (
+                        <StarOff className="w-4 h-4 text-gray-400" />
+                      )}
+                    </button>
+                    <div className="flex items-center text-xs text-gray-500">
+                      <MapPin className="w-3 h-3 mr-1" />
+                      {stop.stopCode}
+                    </div>
                   </div>
                 </div>
               </CardContent>
