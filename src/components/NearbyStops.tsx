@@ -18,11 +18,44 @@ interface NearbyStopsProps {
   onSelectStop: (stop: BusStopInfo) => void;
 }
 
+// Popular bus stops in different areas of Singapore for nearby search
+const popularBusStops: BusStopInfo[] = [
+  // Orchard Area
+  { stopCode: '09037', stopName: 'Orchard Rd', roadName: 'Orchard Road', latitude: 1.3048, longitude: 103.8318 },
+  { stopCode: '09047', stopName: 'Orchard Plaza', roadName: 'Orchard Road', latitude: 1.3058, longitude: 103.8308 },
+  
+  // CBD Area
+  { stopCode: '02049', stopName: 'Raffles Place MRT', roadName: 'Raffles Quay', latitude: 1.2837, longitude: 103.8516 },
+  { stopCode: '02059', stopName: 'Marina Bay Sands', roadName: 'Bayfront Avenue', latitude: 1.2834, longitude: 103.8607 },
+  
+  // Bugis Area
+  { stopCode: '01012', stopName: 'Bugis Junction', roadName: 'Victoria Street', latitude: 1.2993, longitude: 103.8547 },
+  { stopCode: '01022', stopName: 'Bugis MRT', roadName: 'North Bridge Road', latitude: 1.2998, longitude: 103.8556 },
+  
+  // Clarke Quay Area
+  { stopCode: '03111', stopName: 'Clarke Quay MRT', roadName: 'North Bridge Road', latitude: 1.2886, longitude: 103.8467 },
+  
+  // Chinatown Area
+  { stopCode: '04168', stopName: 'Chinatown MRT', roadName: 'New Bridge Road', latitude: 1.2845, longitude: 103.8441 },
+  
+  // Little India Area
+  { stopCode: '48009', stopName: 'Little India MRT', roadName: 'Serangoon Road', latitude: 1.3067, longitude: 103.8493 },
+  
+  // Tanjong Pagar Area
+  { stopCode: '04211', stopName: 'Tanjong Pagar MRT', roadName: 'Tanjong Pagar Road', latitude: 1.2765, longitude: 103.8459 },
+  
+  // Dhoby Ghaut Area
+  { stopCode: '08031', stopName: 'Dhoby Ghaut MRT', roadName: 'Orchard Road', latitude: 1.2988, longitude: 103.8456 },
+  
+  // Somerset Area
+  { stopCode: '09023', stopName: 'Somerset MRT', roadName: 'Orchard Road', latitude: 1.3007, longitude: 103.8390 },
+];
+
 const NearbyStops = ({ onSelectStop }: NearbyStopsProps) => {
   const [nearbyStops, setNearbyStops] = useState<BusStopInfo[]>([]);
   const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
   const [loadingLocation, setLoadingLocation] = useState(false);
-  const { loading, searchBusStops } = useLTAData();
+  const { loading } = useLTAData();
 
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
     const R = 6371; // Radius of the Earth in km
@@ -50,27 +83,24 @@ const NearbyStops = ({ onSelectStop }: NearbyStopsProps) => {
         const { latitude, longitude } = position.coords;
         setUserLocation({ lat: latitude, lng: longitude });
 
-        // Get all bus stops (we'll filter by distance)
-        const allStops = await searchBusStops('');
-        
-        // Calculate distances and filter nearby stops (within 1km)
-        const stopsWithDistance = allStops.map(stop => ({
+        // Calculate distances to popular stops and filter nearby ones (within 3km)
+        const stopsWithDistance = popularBusStops.map(stop => ({
           ...stop,
           distance: calculateDistance(latitude, longitude, stop.latitude, stop.longitude)
-        })).filter(stop => stop.distance! <= 1);
+        })).filter(stop => stop.distance! <= 3);
 
-        // Sort by distance and take top 10
+        // Sort by distance and take top 8
         const sortedStops = stopsWithDistance
           .sort((a, b) => a.distance! - b.distance!)
-          .slice(0, 10);
+          .slice(0, 8);
 
         setNearbyStops(sortedStops);
         setLoadingLocation(false);
         
         if (sortedStops.length > 0) {
-          showSuccess(`Found ${sortedStops.length} nearby bus stops`);
+          showSuccess(`Found ${sortedStops.length} nearby popular bus stops`);
         } else {
-          showError('No bus stops found within 1km');
+          showError('No popular bus stops found within 3km. Try searching for specific stops.');
         }
       },
       (error) => {
@@ -104,7 +134,7 @@ const NearbyStops = ({ onSelectStop }: NearbyStopsProps) => {
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg flex items-center gap-2">
             <Navigation className="w-5 h-5 text-blue-500" />
-            Nearby Stops
+            Nearby Popular Stops
           </CardTitle>
           <Button 
             onClick={findNearbyStops} 
@@ -136,6 +166,9 @@ const NearbyStops = ({ onSelectStop }: NearbyStopsProps) => {
               </div>
             ))}
           </div>
+          <p className="text-xs text-gray-500 mt-2 text-center">
+            Showing popular stops within 3km. Use search for more specific locations.
+          </p>
         </CardContent>
       )}
     </Card>
