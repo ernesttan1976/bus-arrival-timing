@@ -35,10 +35,10 @@ serve(async (req) => {
       )
     }
 
-    // CORRECT ENDPOINT: v3/BusArrival (as confirmed by endpoint testing)
+    // USING THE CORRECT v3/BusArrival ENDPOINT
     const ltaUrl = `https://datamall2.mytransport.sg/ltaodataservice/v3/BusArrival?BusStopCode=${busStopCode}`
     
-    console.log(`✅ USING CORRECT v3 ENDPOINT: ${ltaUrl}`)
+    console.log(`🚌 CALLING v3 ENDPOINT: ${ltaUrl}`)
     console.log(`Using API key: ${ltaApiKey.substring(0, 8)}...`)
 
     const response = await fetch(ltaUrl, {
@@ -48,14 +48,14 @@ serve(async (req) => {
       }
     })
 
-    console.log(`LTA API response status: ${response.status}`)
+    console.log(`LTA v3 API response status: ${response.status}`)
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error(`LTA API error: ${response.status} - ${errorText}`)
+      console.error(`LTA v3 API error: ${response.status} - ${errorText}`)
       return new Response(
         JSON.stringify({ 
-          error: `LTA API returned ${response.status}`, 
+          error: `LTA v3 API returned ${response.status}`, 
           details: errorText 
         }),
         { 
@@ -66,7 +66,7 @@ serve(async (req) => {
     }
 
     const data = await response.json()
-    console.log(`Raw LTA response for stop ${busStopCode}:`, JSON.stringify(data, null, 2))
+    console.log(`✅ v3 API Raw LTA response for stop ${busStopCode}:`, JSON.stringify(data, null, 2))
     
     // Helper function to calculate arrival time in minutes
     const calculateArrivalTime = (estimatedArrival: string | null): number | null => {
@@ -111,7 +111,7 @@ serve(async (req) => {
       }))
     }
 
-    console.log(`✅ SUCCESS: Returning ${transformedData.services.length} bus services for stop ${busStopCode}`)
+    console.log(`✅ v3 SUCCESS: Returning ${transformedData.services.length} bus services for stop ${busStopCode}`)
 
     return new Response(
       JSON.stringify(transformedData),
@@ -121,10 +121,10 @@ serve(async (req) => {
     )
 
   } catch (error) {
-    console.error('❌ ERROR in bus arrival function:', error)
+    console.error('❌ v3 ERROR in bus arrival function:', error)
     return new Response(
       JSON.stringify({ 
-        error: 'Failed to fetch bus arrival data', 
+        error: 'Failed to fetch bus arrival data from v3 endpoint', 
         details: error.message,
         stack: error.stack 
       }),
