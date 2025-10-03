@@ -35,10 +35,10 @@ serve(async (req) => {
       )
     }
 
-    // Correct LTA DataMall Bus Arrival API endpoint - using v3/BusArrival
+    // CORRECT ENDPOINT: v3/BusArrival (as confirmed by endpoint testing)
     const ltaUrl = `https://datamall2.mytransport.sg/ltaodataservice/v3/BusArrival?BusStopCode=${busStopCode}`
     
-    console.log(`Fetching bus arrival for stop ${busStopCode} from: ${ltaUrl}`)
+    console.log(`✅ USING CORRECT v3 ENDPOINT: ${ltaUrl}`)
     console.log(`Using API key: ${ltaApiKey.substring(0, 8)}...`)
 
     const response = await fetch(ltaUrl, {
@@ -111,8 +111,7 @@ serve(async (req) => {
       }))
     }
 
-    console.log(`Transformed data for stop ${busStopCode}:`, JSON.stringify(transformedData, null, 2))
-    console.log(`Returning ${transformedData.services.length} bus services for stop ${busStopCode}`)
+    console.log(`✅ SUCCESS: Returning ${transformedData.services.length} bus services for stop ${busStopCode}`)
 
     return new Response(
       JSON.stringify(transformedData),
@@ -122,7 +121,7 @@ serve(async (req) => {
     )
 
   } catch (error) {
-    console.error('Error in bus arrival function:', error)
+    console.error('❌ ERROR in bus arrival function:', error)
     return new Response(
       JSON.stringify({ 
         error: 'Failed to fetch bus arrival data', 
