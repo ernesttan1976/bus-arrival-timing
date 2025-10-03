@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import BusStop from "@/components/BusStop";
-import SearchBar from "@/components/SearchBar";
+import BusStopSearch from "@/components/BusStopSearch";
 import RefreshButton from "@/components/RefreshButton";
+import { useLTAData } from "@/hooks/useLTAData";
 import { showSuccess, showError } from "@/utils/toast";
 
 interface BusArrival {
@@ -17,82 +18,102 @@ interface BusStopData {
   arrivals: BusArrival[];
 }
 
+interface BusStopInfo {
+  stopCode: string;
+  stopName: string;
+  roadName: string;
+  latitude: number;
+  longitude: number;
+}
+
 const Index = () => {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [busStops, setBusStops] = useState<BusStopData[]>([]);
+  const [selectedStops, setSelectedStops] = useState<BusStopInfo[]>([]);
+  const [busStopsData, setBusStopsData] = useState<BusStopData[]>([]);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const { loading, getBusArrival, getCrowdLevel } = useLTAData();
 
-  // Mock data for demonstration
-  const mockBusStops: BusStopData[] = [
-    {
-      stopName: "Orchard Road",
-      stopCode: "01012",
-      arrivals: [
-        { busNumber: "14", destination: "Bedok", arrivalTime: 2, crowdLevel: 'medium' },
-        { busNumber: "111", destination: "Ghim Moh", arrivalTime: 5, crowdLevel: 'low' },
-        { busNumber: "123", destination: "Ang Mo Kio", arrivalTime: 8, crowdLevel: 'high' },
-      ]
-    },
-    {
-      stopName: "Marina Bay Sands",
-      stopCode: "02013",
-      arrivals: [
-        { busNumber: "97", destination: "Jurong East", arrivalTime: 0, crowdLevel: 'high' },
-        { busNumber: "133", destination: "Toa Payoh", arrivalTime: 12, crowdLevel: 'low' },
-      ]
-    },
-    {
-      stopName: "Raffles Place",
-      stopCode: "03014",
-      arrivals: [
-        { busNumber: "75", destination: "Yishun", arrivalTime: 3, crowdLevel: 'medium' },
-        { busNumber: "196", destination: "Clementi", arrivalTime: 7, crowdLevel: 'low' },
-        { busNumber: "61", destination: "Eunos", arrivalTime: 15, crowdLevel: 'medium' },
-      ]
+  const handleSelectStop = (stop: BusStopInfo) => {
+    if (!selectedStops.find(s => s.stopCode === stop.stopCode)) {
+      setSelectedStops(prev => [...prev, stop]);
+      fetchBusArrival(stop);
     }
-  ];
+  };
 
-  useEffect(() => {
-    // Initialize with mock data
-    setBusStops(mockBusStops);
-  }, []);
+  const fetchBusArrival = async (stop: BusStopInfo) => {
+    const arrivalData = await getBusArrival(stop.stopCode);
+    
+    if (arrivalData && arrivalData.services) {
+      const arrivals: BusArrival[] = [];
+      
+      arrivalData.services.forEach(service => {
+        // Add next bus if available
+        if (service.nextBus.arrivalTime !== null) {
+          arrivals.push({
+            busNumber: service.busNumber,
+            destination: "Various", // LTA doesn't provide destination in arrival API
+            arrivalTime: service.nextBus.arrivalTime,
+            crowdLevel: getCrowdLevel(service.nextBus.load)
+          });
+        }
+        
+        // Add second bus if available
+        if (service.nextBus2.arrivalTime !== null) {
+          arrivals.push({
+            busNumber: service.busNumber,
+            destination: "Various",
+            arrivalTime: service.nextBus2.arrivalTime,
+            crowdLevel: getCrowdLevel(service.nextBus2.load)
+          });
+        }
+        
+        // Add third bus if available
+        if (service.nextBus3.arrivalTime !== null) {
+          arrivals.push({
+            busNumber: service.busNumber,
+            destination: "Various",
+            arrivalTime: service.nextBus3.arrivalTime,
+            crowdLevel: getCrowdLevel(service.nextBus3.load)
+          });
+        }
+      });
 
-  const handleSearch = () => {
-    if (!searchQuery.trim()) {
-      setBusStops(mockBusStops);
-      return;
-    }
+      // Sort by arrival time
+      arrivals.sort((a, b) => a.arrivalTime - b.arrivalTime);
 
-    const filtered = mockBusStops.filter(stop => 
-      stop.stopName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      stop.stopCode.includes(searchQuery)
-    );
+      const busStopData: BusStopData = {
+        stopName: stop.stopName,
+        stopCode: stop.stopCode,
+        arrivals: arrivals
+      };
 
-    if (filtered.length === 0) {
-      showError("No bus stops found matching your search");
+      setBusStopsData(prev => {
+        const filtered = prev.filter(s => s.stopCode !== stop.stopCode);
+        return [...filtered, busStopData];
+      });
+
+      showSuccess(`Updated arrivals for ${stop.stopName}`);
     } else {
-      showSuccess(`Found ${filtered.length} bus stop(s)`);
+      showError(`No bus data available for ${stop.stopName}`);
     }
-
-    setBusStops(filtered);
   };
 
   const handleRefresh = async () => {
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Update arrival times (simulate real-time updates)
-    const updatedStops = busStops.map(stop => ({
-      ...stop,
-      arrivals: stop.arrivals.map(arrival => ({
-        ...arrival,
-        arrivalTime: Math.max(0, arrival.arrivalTime - Math.floor(Math.random() * 2))
-      }))
-    }));
+    if (selectedStops.length === 0) {
+      showError("Please select a bus stop first");
+      return;
+    }
 
-    setBusStops(updatedStops);
+    for (const stop of selectedStops) {
+      await fetchBusArrival(stop);
+    }
+    
     setLastUpdated(new Date());
-    showSuccess("Bus timings updated");
+    showSuccess("All bus timings updated");
+  };
+
+  const removeStop = (stopCode: string) => {
+    setSelectedStops(prev => prev.filter(s => s.stopCode !== stopCode));
+    setBusStopsData(prev => prev.filter(s => s.stopCode !== stopCode));
   };
 
   return (
@@ -100,40 +121,50 @@ const Index = () => {
       <div className="max-w-2xl mx-auto">
         <div className="text-center mb-6">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Bus Arrival Timing</h1>
-          <p className="text-gray-600">Real-time bus arrival information</p>
+          <p className="text-gray-600">Real-time bus arrival information from LTA DataMall</p>
         </div>
 
-        <SearchBar
-          value={searchQuery}
-          onChange={setSearchQuery}
-          onSearch={handleSearch}
-          placeholder="Search bus stop name or code..."
-        />
+        <BusStopSearch onSelectStop={handleSelectStop} />
 
-        <div className="flex justify-between items-center mb-4">
-          <p className="text-sm text-gray-500">
-            Last updated: {lastUpdated.toLocaleTimeString()}
-          </p>
-          <RefreshButton onRefresh={handleRefresh} />
-        </div>
+        {selectedStops.length > 0 && (
+          <div className="flex justify-between items-center mb-4">
+            <p className="text-sm text-gray-500">
+              Last updated: {lastUpdated.toLocaleTimeString()}
+            </p>
+            <RefreshButton onRefresh={handleRefresh} />
+          </div>
+        )}
 
         <div className="space-y-4">
-          {busStops.length === 0 ? (
+          {busStopsData.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-gray-500 text-lg">No bus stops to display</p>
-              <p className="text-gray-400 text-sm mt-2">Try searching for a bus stop</p>
+              <p className="text-gray-500 text-lg">No bus stops selected</p>
+              <p className="text-gray-400 text-sm mt-2">Search and select a bus stop to see real-time arrivals</p>
             </div>
           ) : (
-            busStops.map((stop, index) => (
-              <BusStop
-                key={index}
-                stopName={stop.stopName}
-                stopCode={stop.stopCode}
-                arrivals={stop.arrivals}
-              />
+            busStopsData.map((stop) => (
+              <div key={stop.stopCode} className="relative">
+                <button
+                  onClick={() => removeStop(stop.stopCode)}
+                  className="absolute top-2 right-2 z-10 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+                >
+                  ×
+                </button>
+                <BusStop
+                  stopName={stop.stopName}
+                  stopCode={stop.stopCode}
+                  arrivals={stop.arrivals}
+                />
+              </div>
             ))
           )}
         </div>
+
+        {loading && (
+          <div className="text-center py-4">
+            <p className="text-gray-500">Loading bus data...</p>
+          </div>
+        )}
       </div>
     </div>
   );
