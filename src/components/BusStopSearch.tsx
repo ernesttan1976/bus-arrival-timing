@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, MapPin, Star, StarOff } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -25,13 +25,27 @@ const BusStopSearch = ({ onSelectStop }: BusStopSearchProps) => {
   const { loading, searchBusStops } = useLTAData();
 
   // Load favorites from localStorage
-  useState(() => {
+  useEffect(() => {
     const savedFavorites = localStorage.getItem('favoriteBusStops');
     if (savedFavorites) {
       const favStops = JSON.parse(savedFavorites);
       setFavorites(favStops.map((stop: BusStopInfo) => stop.stopCode));
     }
-  });
+  }, []);
+
+  // Auto-search when query changes (with debounce)
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (searchQuery.trim().length >= 2) {
+        handleSearch();
+      } else if (searchQuery.trim().length === 0) {
+        // Show all stops when search is empty
+        handleSearch();
+      }
+    }, 500); // 500ms debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery]);
 
   const handleSearch = async () => {
     setHasSearched(true);
@@ -92,6 +106,7 @@ const BusStopSearch = ({ onSelectStop }: BusStopSearchProps) => {
           <p className="text-sm text-gray-600">
             {loading ? 'Searching...' : `Found ${searchResults.length} bus stops`}
             {searchQuery.trim() && ` for "${searchQuery}"`}
+            {searchResults.length === 50 && ' (showing first 50)'}
           </p>
         </div>
       )}
