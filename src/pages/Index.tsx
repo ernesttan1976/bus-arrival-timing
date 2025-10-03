@@ -184,9 +184,6 @@ const Index = () => {
           <p className="text-gray-600">Real-time bus arrival information from LTA DataMall</p>
         </div>
 
-        <DebugPanel />
-        <MockDataToggle onToggle={setUseMockData} />
-
         <FavoriteStops onSelectStop={handleSelectStop} />
         <NearbyStops onSelectStop={handleSelectStop} />
         <BusStopSearch onSelectStop={handleSelectStop} />
@@ -253,6 +250,12 @@ const Index = () => {
             <p className="text-gray-500">Loading bus data...</p>
           </div>
         )}
+
+        {/* Developer Tools - Moved to bottom and collapsed by default */}
+        <div className="mt-8 pt-8 border-t border-gray-200">
+          <MockDataToggle onToggle={setUseMockData} />
+          <DebugPanel />
+        </div>
       </div>
     </div>
   );
