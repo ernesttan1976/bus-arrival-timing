@@ -35,8 +35,8 @@ serve(async (req) => {
       )
     }
 
-    // Correct LTA DataMall Bus Arrival API endpoint - note the capital 'V' in BusArrivalV2
-    const ltaUrl = `https://datamall2.mytransport.sg/ltaodataservice/BusArrivalV2?BusStopCode=${busStopCode}`
+    // Correct LTA DataMall Bus Arrival API endpoint - using v3/BusArrival
+    const ltaUrl = `https://datamall2.mytransport.sg/ltaodataservice/v3/BusArrival?BusStopCode=${busStopCode}`
     
     console.log(`Fetching bus arrival for stop ${busStopCode} from: ${ltaUrl}`)
     console.log(`Using API key: ${ltaApiKey.substring(0, 8)}...`)
