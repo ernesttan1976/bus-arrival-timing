@@ -36,6 +36,7 @@ interface BusStopInfo {
   roadName: string;
   latitude: number;
   longitude: number;
+  distance?: number;
 }
 
 // Enhanced mock data for testing
@@ -105,6 +106,19 @@ const mockBusServices: { [key: string]: BusService[] } = {
   ]
 };
 
+// Helper function to calculate distance
+const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+  const R = 6371; // Radius of the Earth in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+};
+
 export const useLTAData = (useMockData: boolean = false) => {
   const [loading, setLoading] = useState(false);
 
@@ -143,7 +157,11 @@ export const useLTAData = (useMockData: boolean = false) => {
     }
   };
 
-  const searchBusStops = async (searchQuery: string): Promise<BusStopInfo[]> => {
+  const searchBusStops = async (
+    searchQuery: string, 
+    userLocation?: { lat: number, lng: number }, 
+    maxDistance?: number
+  ): Promise<BusStopInfo[]> => {
     setLoading(true);
     
     try {
@@ -151,26 +169,54 @@ export const useLTAData = (useMockData: boolean = false) => {
         // Simulate API delay
         await new Promise(resolve => setTimeout(resolve, 300));
         
-        if (!searchQuery.trim()) {
-          console.log('Mock data: Returning all stops');
-          return mockBusStops;
+        let filtered = mockBusStops;
+        
+        // Apply text search
+        if (searchQuery && searchQuery.trim()) {
+          const query = searchQuery.toLowerCase();
+          filtered = mockBusStops.filter(stop => 
+            stop.stopName.toLowerCase().includes(query) ||
+            stop.stopCode.toLowerCase().includes(query) ||
+            stop.roadName.toLowerCase().includes(query)
+          );
         }
         
-        const query = searchQuery.toLowerCase();
-        const filtered = mockBusStops.filter(stop => 
-          stop.stopName.toLowerCase().includes(query) ||
-          stop.stopCode.toLowerCase().includes(query) ||
-          stop.roadName.toLowerCase().includes(query)
-        );
+        // Apply location filter
+        if (userLocation && maxDistance) {
+          const stopsWithDistance = filtered.map(stop => ({
+            ...stop,
+            distance: calculateDistance(userLocation.lat, userLocation.lng, stop.latitude, stop.longitude)
+          }));
+          
+          filtered = stopsWithDistance
+            .filter(stop => stop.distance! <= maxDistance)
+            .sort((a, b) => a.distance! - b.distance!);
+        }
         
-        console.log(`Mock data: Found ${filtered.length} stops for "${searchQuery}"`);
+        console.log(`Mock data: Found ${filtered.length} stops`);
         return filtered;
       }
 
-      console.log(`Searching LTA API for: "${searchQuery}"`);
+      console.log(`🔍 Searching LTA API:`, {
+        searchQuery,
+        userLocation,
+        maxDistance
+      });
+      
+      const requestBody: any = { 
+        searchQuery, 
+        skip: 0 
+      };
+      
+      // Add location parameters if provided
+      if (userLocation) {
+        requestBody.userLat = userLocation.lat;
+        requestBody.userLng = userLocation.lng;
+        requestBody.maxDistance = maxDistance || 2;
+      }
       
       const { data, error } = await supabase.functions.invoke('lta-bus-stops', {
-        body: { searchQuery, skip: 0 }
+        body: requestBody
       });
 
       if (error) {
@@ -186,7 +232,7 @@ export const useLTAData = (useMockData: boolean = false) => {
       }
 
       const busStops = data.busStops || [];
-      console.log(`LTA API returned ${busStops.length} bus stops`);
+      console.log(`✅ LTA API returned ${busStops.length} bus stops`);
       
       return busStops;
     } catch (error) {
