@@ -23,9 +23,6 @@ serve(async (req) => {
       )
     }
 
-    // Fixed LTA DataMall API endpoint - changed to HTTPS
-    const ltaUrl = `https://datamall2.mytransport.sg/ltaodataservice/BusArrivalv2?BusStopCode=${busStopCode}`
-    
     const ltaApiKey = Deno.env.get('LTA_API_KEY')
     
     if (!ltaApiKey) {
@@ -38,8 +35,10 @@ serve(async (req) => {
       )
     }
 
-    console.log(`Fetching bus arrival for stop ${busStopCode}`)
-    console.log(`Using API key: ${ltaApiKey.substring(0, 8)}...`)
+    // LTA DataMall Bus Arrival API endpoint
+    const ltaUrl = `https://datamall2.mytransport.sg/ltaodataservice/BusArrivalv2?BusStopCode=${busStopCode}`
+    
+    console.log(`Fetching bus arrival for stop ${busStopCode} from: ${ltaUrl}`)
 
     const response = await fetch(ltaUrl, {
       headers: {
@@ -53,44 +52,66 @@ serve(async (req) => {
     if (!response.ok) {
       const errorText = await response.text()
       console.error(`LTA API error: ${response.status} - ${errorText}`)
-      throw new Error(`LTA API error: ${response.status}`)
+      return new Response(
+        JSON.stringify({ 
+          error: `LTA API returned ${response.status}`, 
+          details: errorText 
+        }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
     }
 
     const data = await response.json()
-    console.log(`Received data for ${data.Services?.length || 0} bus services`)
+    console.log(`Raw LTA response:`, JSON.stringify(data, null, 2))
     
+    // Helper function to calculate arrival time in minutes
+    const calculateArrivalTime = (estimatedArrival: string | null): number | null => {
+      if (!estimatedArrival) return null;
+      
+      try {
+        const arrivalTime = new Date(estimatedArrival);
+        const now = new Date();
+        const diffMs = arrivalTime.getTime() - now.getTime();
+        const diffMinutes = Math.floor(diffMs / 60000);
+        return Math.max(0, diffMinutes); // Don't return negative times
+      } catch (error) {
+        console.error('Error parsing arrival time:', estimatedArrival, error);
+        return null;
+      }
+    };
+
     // Transform LTA data to our format
     const transformedData = {
       stopCode: busStopCode,
-      services: data.Services?.map((service: any) => ({
-        busNumber: service.ServiceNo,
-        operator: service.Operator,
+      services: (data.Services || []).map((service: any) => ({
+        busNumber: service.ServiceNo || 'Unknown',
+        operator: service.Operator || 'Unknown',
         nextBus: {
-          arrivalTime: service.NextBus?.EstimatedArrival ? 
-            Math.max(0, Math.floor((new Date(service.NextBus.EstimatedArrival).getTime() - new Date().getTime()) / 60000)) : 
-            null,
+          arrivalTime: calculateArrivalTime(service.NextBus?.EstimatedArrival),
           load: service.NextBus?.Load || 'SEA',
           feature: service.NextBus?.Feature || 'WAB',
           type: service.NextBus?.Type || 'SD'
         },
         nextBus2: {
-          arrivalTime: service.NextBus2?.EstimatedArrival ? 
-            Math.max(0, Math.floor((new Date(service.NextBus2.EstimatedArrival).getTime() - new Date().getTime()) / 60000)) : 
-            null,
+          arrivalTime: calculateArrivalTime(service.NextBus2?.EstimatedArrival),
           load: service.NextBus2?.Load || 'SEA',
           feature: service.NextBus2?.Feature || 'WAB',
           type: service.NextBus2?.Type || 'SD'
         },
         nextBus3: {
-          arrivalTime: service.NextBus3?.EstimatedArrival ? 
-            Math.max(0, Math.floor((new Date(service.NextBus3.EstimatedArrival).getTime() - new Date().getTime()) / 60000)) : 
-            null,
+          arrivalTime: calculateArrivalTime(service.NextBus3?.EstimatedArrival),
           load: service.NextBus3?.Load || 'SEA',
           feature: service.NextBus3?.Feature || 'WAB',
           type: service.NextBus3?.Type || 'SD'
         }
-      })) || []
+      }))
     }
+
+    console.log(`Transformed data:`, JSON.stringify(transformedData, null, 2))
+    console.log(`Returning ${transformedData.services.length} bus services`)
 
     return new Response(
       JSON.stringify(transformedData),
@@ -100,9 +121,13 @@ serve(async (req) => {
     )
 
   } catch (error) {
-    console.error('Error fetching LTA bus arrival data:', error)
+    console.error('Error in bus arrival function:', error)
     return new Response(
-      JSON.stringify({ error: 'Failed to fetch bus arrival data', details: error.message }),
+      JSON.stringify({ 
+        error: 'Failed to fetch bus arrival data', 
+        details: error.message,
+        stack: error.stack 
+      }),
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
