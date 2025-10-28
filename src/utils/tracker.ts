@@ -1,4 +1,4 @@
-import Tracker from '@openreplay/tracker/lib/app';
+import Tracker from '@openreplay/tracker';
 
 // Only initialize tracker in production environment
 const initializeTracker = () => {
