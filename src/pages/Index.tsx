@@ -1,12 +1,9 @@
 import { useState, useEffect } from "react";
 import BusStop from "@/components/BusStop";
-import BusStopSearch from "@/components/BusStopSearch";
 import RefreshButton from "@/components/RefreshButton";
 import { FavoriteStops } from "@/components/FavoriteStops";
 import NearbyStops from "@/components/NearbyStops";
 import BusServiceFilter from "@/components/BusServiceFilter";
-import DebugPanel from "@/components/DebugPanel";
-import MockDataToggle from "@/components/MockDataToggle";
 import { useLTAData } from "@/hooks/useLTAData";
 import { showSuccess, showError } from "@/utils/toast";
 
@@ -40,8 +37,7 @@ const Index = () => {
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [busFilters, setBusFilters] = useState<string[]>([]);
   const [autoRefresh, setAutoRefresh] = useState(false);
-  const [useMockData, setUseMockData] = useState(false);
-  const { loading, getBusArrival, getCrowdLevel } = useLTAData(useMockData);
+  const { loading, getBusArrival, getCrowdLevel } = useLTAData();
 
   // Auto-refresh functionality
   useEffect(() => {
@@ -186,7 +182,6 @@ const Index = () => {
 
         <FavoriteStops onSelectStop={handleSelectStop} />
         <NearbyStops onSelectStop={handleSelectStop} />
-        <BusStopSearch onSelectStop={handleSelectStop} />
 
         {selectedStops.length > 0 && (
           <>
@@ -220,11 +215,6 @@ const Index = () => {
             <div className="text-center py-12">
               <p className="text-gray-500 text-lg">No bus stops selected</p>
               <p className="text-gray-400 text-sm mt-2">Search and select a bus stop to see real-time arrivals</p>
-              {!useMockData && (
-                <p className="text-orange-500 text-sm mt-2">
-                  💡 Try enabling "Use Mock Data" above if you haven't set up the LTA API key yet
-                </p>
-              )}
             </div>
           ) : (
             busStopsData.map((stop) => (
@@ -250,12 +240,6 @@ const Index = () => {
             <p className="text-gray-500">Loading bus data...</p>
           </div>
         )}
-
-        {/* Developer Tools - Moved to bottom and collapsed by default */}
-        <div className="mt-8 pt-8 border-t border-gray-200">
-          <MockDataToggle onToggle={setUseMockData} />
-          <DebugPanel />
-        </div>
       </div>
     </div>
   );
